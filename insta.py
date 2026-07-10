@@ -79,7 +79,7 @@ GEMINI_ENDPOINT = (
     f"{GEMINI_MODEL}:generateContent"
 )
 
-# The ONLY categories allowed. Gemini must pick exactly one of these (or "").
+# The ONLY categories allowed. Gemini may pick one or more of these (or none).
 ALLOWED_CATEGORIES = {"CELEBRITY", "LIFESTYLE", "CREATIVE", "MODEL", "FITNESS"}
 CATEGORY_DEFINITIONS = """- CELEBRITY: anyone with a TV show or movie, an actor, or a singer
 - LIFESTYLE: anyone with mixed beauty, fashion, and/or food content
