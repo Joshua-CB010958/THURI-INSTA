@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Instagram Scraper</title>
+  <style>
+    :root {
+      --bg: #0d0f14;
+      --panel: #161a22;
+      --panel-2: #1d222c;
+      --border: #2a303c;
+      --text: #e8ebf0;
+      --muted: #8b94a7;
+      --accent: #e1b800;
+      --accent-ink: #1a1400;
+      --pink: #ff3d77;
+      --purple: #9b6dff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: radial-gradient(1200px 600px at 50% -10%, #1a1f2b 0%, var(--bg) 55%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    header {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 40px 24px 8px;
+    }
+    h1 {
+      margin: 0 0 6px;
+      font-size: 28px;
+      letter-spacing: -0.02em;
+      background: linear-gradient(90deg, #fff, #ffd84d);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .sub { color: var(--muted); font-size: 14px; margin: 0; }
+
+    .composer {
+      max-width: 1100px;
+      margin: 20px auto 0;
+      padding: 0 24px;
+    }
+    .card-input {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    textarea {
+      width: 100%;
+      min-height: 120px;
+      resize: vertical;
+      background: var(--panel-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      font-size: 14px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      line-height: 1.5;
+      outline: none;
+    }
+    textarea:focus { border-color: var(--accent); }
+    .row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .run {
+      background: var(--accent);
+      color: var(--accent-ink);
+      border: none;
+      border-radius: 999px;
+      padding: 12px 28px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform .06s ease, opacity .2s;
+    }
+    .run:hover { transform: translateY(-1px); }
+    .run:disabled { opacity: .5; cursor: default; transform: none; }
+    .status { color: var(--muted); font-size: 13px; }
+    .counter {
+      font-size: 12px; font-weight: 700; color: var(--muted);
+      padding: 4px 10px; border-radius: 999px;
+      background: var(--panel-2); border: 1px solid var(--border);
+    }
+    .counter.over { color: #ff8ba0; border-color: #5a2530; background: #201216; }
+    .timer {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums;
+      color: var(--accent);
+      padding: 6px 14px; border-radius: 999px;
+      background: rgba(225,184,0,.10); border: 1px solid rgba(225,184,0,.35);
+    }
+    .timer .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--accent); animation: pulse 1s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .25; } }
+
+    .grid {
+      max-width: 1100px;
+      margin: 26px auto 80px;
+      padding: 0 24px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      animation: pop .25s ease;
+    }
+    @keyframes pop { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    .card.err { border-color: #5a2530; background: #201216; }
+
+    .top { display: flex; gap: 14px; align-items: center; }
+    .avatar {
+      width: 64px; height: 64px; border-radius: 50%;
+      object-fit: cover; background: var(--panel-2);
+      border: 2px solid var(--border); flex-shrink: 0;
+    }
+    .who { min-width: 0; }
+    .name { font-weight: 700; font-size: 16px; display: flex; align-items: center; gap: 6px; }
+    .verified { color: #3fa9ff; font-size: 14px; }
+    .handle { color: var(--muted); font-size: 13px; text-decoration: none; }
+    .handle:hover { color: var(--accent); }
+
+    .stats { display: flex; gap: 20px; }
+    .stat .num { font-size: 18px; font-weight: 700; }
+    .stat .lbl { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+
+    .bio { font-size: 13px; color: #c7cddb; line-height: 1.5; white-space: pre-wrap; }
+
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip {
+      font-size: 11px; font-weight: 700; letter-spacing: .04em;
+      padding: 4px 10px; border-radius: 999px;
+      background: linear-gradient(90deg, rgba(155,109,255,.18), rgba(255,61,119,.18));
+      border: 1px solid var(--border); color: #d9c8ff;
+    }
+    .chip.gender { background: var(--panel-2); color: var(--muted); }
+    .errmsg { font-size: 13px; color: #ff8ba0; }
+    .foot { color: var(--muted); font-size: 12px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Instagram Scraper</h1>
+    <p class="sub">Paste Instagram links or @handles — one per line — and press Run. Max 10 profiles per run; 5-minute cooldown between runs.</p>
+    <p class="sub" id="authnote" style="margin-top:6px"></p>
+  </header>
+
+  <div class="composer">
+    <div class="card-input">
+      <textarea id="input" placeholder="https://www.instagram.com/vicmabor/&#10;@fayefoy&#10;natgeo"></textarea>
+      <div class="row">
+        <button class="run" id="run">Run</button>
+        <span class="counter" id="counter">0 / 10</span>
+        <span class="timer" id="timer" hidden><span class="dot"></span><span id="timertext">0s</span></span>
+        <span class="status" id="status"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const grid = $("grid");
+
+    function fmt(n) {
+      if (typeof n !== "number") return n || "—";
+      return n.toLocaleString();
+    }
+
+    function esc(s) {
+      return (s || "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    }
+
+    function cardEl(r) {
+      const div = document.createElement("div");
+      div.className = "card";
+      const pic = r.profile_pic_url ? `/api/img?url=${encodeURIComponent(r.profile_pic_url)}` : "";
+      const chips = (r.categories || []).map(c => `<span class="chip">${esc(c)}</span>`).join("");
+      const gender = r.gender ? `<span class="chip gender">${esc(r.gender)}</span>` : "";
+      div.innerHTML = `
+        <div class="top">
+          <img class="avatar" src="${pic}" alt="" onerror="this.style.visibility='hidden'"/>
+          <div class="who">
+            <div class="name">${esc(r.name) || esc(r.handle)} ${r.is_verified ? '<span class="verified">✔</span>' : ""}</div>
+            <a class="handle" href="${r.link}" target="_blank" rel="noopener">@${esc(r.handle)}</a>
+          </div>
+        </div>
+        <div class="stats">
+          <div class="stat"><div class="num">${fmt(r.followers)}</div><div class="lbl">Followers</div></div>
+        </div>
+        ${(chips || gender) ? `<div class="chips">${chips}${gender}</div>` : ""}
+        ${r.bio ? `<div class="bio">${esc(r.bio)}</div>` : ""}
+        <div class="foot">${r.sent_to_webhook ? "✓ sent to sheet" : "⚠ not sent to sheet"}</div>
+      `;
+      return div;
+    }
+
+    function errCard(handle, msg) {
+      const div = document.createElement("div");
+      div.className = "card err";
+      div.innerHTML = `
+        <div class="name">@${esc(handle)}</div>
+        <div class="errmsg">${esc(msg)}</div>`;
+      return div;
+    }
+
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+    // Randomized delay between profiles to avoid Instagram's rate limit.
+    const MIN_DELAY = 15000, MAX_DELAY = 45000;   // random 15–45s between profiles
+
+    // Per-run limits.
+    const PROFILE_LIMIT = 10;                 // max profiles per run
+    const COOLDOWN_MS = 5 * 60 * 1000;        // 5 min before the next run
+    const COOLDOWN_KEY = "ig_next_run_at";
+
+    async function scrapeOne(handle) {
+      const res = await fetch("/api/scrape", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ handle }),
+      });
+      return res.json();
+    }
+
+    let cooldownTimer = null;
+    function startCooldown(nextRunAt) {
+      localStorage.setItem(COOLDOWN_KEY, String(nextRunAt));
+      clearInterval(cooldownTimer);
+      inCooldown = true;
+      const tick = () => {
+        const left = nextRunAt - Date.now();
+        if (left <= 0) {
+          clearInterval(cooldownTimer);
+          inCooldown = false;
+          $("run").textContent = "Run";
+          $("status").textContent = "Ready.";
+          validate();              // restore limit-based enabled/disabled state
+          return;
+        }
+        $("run").disabled = true;
+        const m = Math.floor(left / 60000);
+        const s = String(Math.floor((left % 60000) / 1000)).padStart(2, "0");
+        $("run").textContent = `Wait ${m}:${s}`;
+        $("status").textContent = `Cooldown — next run in ${m}:${s}.`;
+      };
+      tick();
+      cooldownTimer = setInterval(tick, 1000);
+    }
+
+    function getLines() {
+      return $("input").value.split("\n").map(s => s.trim()).filter(Boolean);
+    }
+
+    // Live line-count validation shown before the user clicks Run.
+    let inCooldown = false;
+    function validate() {
+      if (inCooldown) return;           // cooldown owns the button/status
+      const n = getLines().length;
+      const counter = $("counter");
+      counter.textContent = `${n} / ${PROFILE_LIMIT}`;
+      if (n > PROFILE_LIMIT) {
+        counter.classList.add("over");
+        $("run").disabled = true;
+        $("status").textContent = `Too many — remove ${n - PROFILE_LIMIT} (max ${PROFILE_LIMIT} per run).`;
+      } else {
+        counter.classList.remove("over");
+        $("run").disabled = (n === 0);
+        $("status").textContent = "";
+      }
+    }
+
+    async function run() {
+      // Enforce the cooldown between runs.
+      const nextRunAt = Number(localStorage.getItem(COOLDOWN_KEY) || 0);
+      if (Date.now() < nextRunAt) { startCooldown(nextRunAt); return; }
+
+      let lines = getLines();
+      if (!lines.length) return;
+
+      // Hard block: never run more than the limit.
+      if (lines.length > PROFILE_LIMIT) { validate(); return; }
+
+      grid.innerHTML = "";
+      $("run").disabled = true;
+
+      let done = 0;
+      for (const line of lines) {
+        $("status").textContent = `Scraping ${done + 1} / ${lines.length}…`;
+        try {
+          const data = await scrapeOne(line);
+          if (data.ok) {
+            grid.appendChild(cardEl(data.result));
+          } else {
+            grid.appendChild(errCard(data.handle || line, data.error || "failed"));
+          }
+        } catch (e) {
+          grid.appendChild(errCard(line, String(e)));
+        }
+        done++;
+
+        // Wait between profiles (skip the wait after the last one).
+        if (done < lines.length) {
+          const wait = Math.round(MIN_DELAY + Math.random() * (MAX_DELAY - MIN_DELAY));
+          $("status").textContent = `Scraped ${done} / ${lines.length} — next in…`;
+          $("timer").hidden = false;
+          for (let left = Math.ceil(wait / 1000); left > 0; left--) {
+            $("timertext").textContent = `${left}s`;
+            await sleep(1000);
+          }
+          $("timer").hidden = true;
+        }
+      }
+      $("timer").hidden = true;
+      $("status").textContent = `Done — ${done} profile${done === 1 ? "" : "s"}.`;
+
+      // Start the 5-minute cooldown before the next run is allowed.
+      startCooldown(Date.now() + COOLDOWN_MS);
+    }
+
+    $("run").addEventListener("click", run);
+    $("input").addEventListener("input", validate);
+    $("input").addEventListener("keydown", (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") run();
+    });
+
+    // Show whether we're using a logged-in Instagram session.
+    fetch("/api/status").then(r => r.json()).then(d => {
+      const el = $("authnote");
+      el.textContent = (d.authed ? "🔓 " : "⚠️ ") + d.note;
+      el.style.color = d.authed ? "#5ad18f" : "#e1b800";
+    }).catch(() => {});
+
+    // Initial state: validate the (empty) input, then resume any active cooldown.
+    validate();
+    (function () {
+      const nextRunAt = Number(localStorage.getItem(COOLDOWN_KEY) || 0);
+      if (Date.now() < nextRunAt) startCooldown(nextRunAt);
+    })();
+  </script>
+</body>
+</html>
