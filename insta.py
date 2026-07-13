@@ -171,13 +171,66 @@ def _parse_count(text: str) -> int:
 _ig_session = None
 _ig_auth_note = "not initialized"
 _ig_browser_used = ""
+_ig_diag = []  # human-readable notes from the last login-detection attempt
+
+
+def _firefox_profile_dirs():
+    """Every Firefox profile directory on this machine, across OSes."""
+    roots = []
+    home = Path.home()
+    appdata = os.environ.get("APPDATA", "")
+    if appdata:                                        # Windows
+        roots.append(Path(appdata) / "Mozilla" / "Firefox" / "Profiles")
+    roots += [
+        home / "Library" / "Application Support" / "Firefox" / "Profiles",  # macOS
+        home / ".mozilla" / "firefox",                                      # Linux
+        home / "snap" / "firefox" / "common" / ".mozilla" / "firefox",      # Linux snap
+    ]
+    dirs = []
+    for root in roots:
+        try:
+            if root.is_dir():
+                dirs += [p for p in root.iterdir() if p.is_dir()]
+        except Exception:
+            continue
+    return dirs
+
+
+def _sessionid_from_firefox(bc):
+    """Try every Firefox profile's cookie DB for an Instagram sessionid.
+
+    browser_cookie3 only reads the single 'default' profile, so a login saved
+    in any other profile is invisible to it. We enumerate them all instead.
+    Returns (sessionid, note) — note describes what was found for logging.
+    """
+    profiles = _firefox_profile_dirs()
+    if not profiles:
+        return "", "no Firefox profile folder found"
+
+    checked = 0
+    for prof in profiles:
+        cookie_db = prof / "cookies.sqlite"
+        if not cookie_db.exists():
+            continue
+        checked += 1
+        try:
+            for c in bc.firefox(cookie_file=str(cookie_db), domain_name="instagram.com"):
+                if c.name == "sessionid" and c.value:
+                    return c.value, f"found in Firefox profile '{prof.name}'"
+        except Exception as e:
+            _ig_diag.append(f"firefox profile '{prof.name}': {type(e).__name__}: {e}")
+            continue
+    if checked == 0:
+        return "", "Firefox profiles exist but none have a cookies.sqlite yet"
+    return "", f"checked {checked} Firefox profile(s) — no Instagram sessionid found"
 
 
 def _load_sessionid() -> str:
     """Find an Instagram sessionid automatically.
 
-    Order: explicit IG_SESSIONID -> the browser you're logged into (via
-    browser_cookie3). Returns "" if none found.
+    Order: explicit IG_SESSIONID -> every Firefox profile -> other browsers
+    (via browser_cookie3). Returns "" if none found. Diagnostics for each step
+    are appended to _ig_diag and printed to the server console.
 
     Note on Windows: Chrome and Edge (v127+, mid-2024 onward) encrypt cookies
     with "app-bound encryption", which only the browser itself can decrypt, so
@@ -185,43 +238,55 @@ def _load_sessionid() -> str:
     and is the reliable choice for automatic login on Windows.
     """
     global _ig_browser_used
+    _ig_diag.clear()
+
     if IG_SESSIONID:
         _ig_browser_used = "manual override (IG_SESSIONID)"
         return IG_SESSIONID
     try:
         import browser_cookie3 as bc
     except ImportError:
+        _ig_diag.append("browser_cookie3 is not installed")
         return ""
 
-    # Firefox first: its cookies are always readable, unlike Chrome/Edge on
-    # recent Windows. The rest are still tried in case they happen to work.
-    all_loaders = {
-        "firefox": bc.firefox, "chrome": bc.chrome, "edge": bc.edge,
-        "brave": bc.brave, "chromium": bc.chromium, "opera": bc.opera,
-        "safari": bc.safari,
+    # Firefox first (readable on Windows, unlike Chrome/Edge), checking every profile.
+    if not IG_BROWSER or IG_BROWSER == "firefox":
+        sid, note = _sessionid_from_firefox(bc)
+        _ig_diag.append(note)
+        if sid:
+            _ig_browser_used = "firefox"
+            return sid
+
+    # Then the rest, via browser_cookie3's default single-profile lookup.
+    other = {
+        "chrome": bc.chrome, "edge": bc.edge, "brave": bc.brave,
+        "chromium": bc.chromium, "opera": bc.opera, "safari": bc.safari,
     }
     if IG_BROWSER:
-        loaders = {IG_BROWSER: all_loaders[IG_BROWSER]} if IG_BROWSER in all_loaders else {}
-    else:
-        loaders = all_loaders
+        other = {IG_BROWSER: other[IG_BROWSER]} if IG_BROWSER in other else {}
 
-    for name, fn in loaders.items():
+    for name, fn in other.items():
         try:
             for c in fn(domain_name="instagram.com"):
                 if c.name == "sessionid" and c.value:
                     _ig_browser_used = name
                     return c.value
-        except Exception:
-            # Browser not installed, locked, or (Chrome/Edge on Windows)
-            # encrypted so we can't read it. Move on to the next.
+        except Exception as e:
+            # Not installed, locked, or (Chrome/Edge on Windows) encrypted.
+            _ig_diag.append(f"{name}: {type(e).__name__}: {e}")
             continue
     return ""
 
 
 def get_session() -> requests.Session:
-    """A shared requests session, logged in via a browser cookie if available."""
+    """A shared requests session, logged in via a browser cookie if available.
+
+    Once a login is found the session is cached. While still anonymous we retry
+    detection on every call, so logging into Firefox and reloading the page
+    picks up the new login without having to restart the app.
+    """
     global _ig_session, _ig_auth_note
-    if _ig_session is not None:
+    if _ig_session is not None and "authenticated" in _ig_auth_note:
         return _ig_session
 
     s = requests.Session()
@@ -235,9 +300,14 @@ def get_session() -> requests.Session:
         else:
             _ig_auth_note = (
                 "anonymous — no Instagram login found. Log in to Instagram in "
-                "Firefox, then reload this page. (Windows blocks reading the "
-                "login from Chrome/Edge, so Firefox is needed.)"
+                "Firefox (a normal window, not Private Browsing), then reload "
+                "this page. (Windows blocks reading the login from Chrome/Edge, "
+                "so Firefox is needed.)"
             )
+            # Print what we found so the terminal shows why detection failed.
+            print("==> Instagram login detection:")
+            for line in _ig_diag or ["(no diagnostics captured)"]:
+                print(f"    - {line}")
     else:
         _ig_auth_note = "anonymous (session cookie disabled)"
     _ig_session = s
