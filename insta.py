@@ -82,7 +82,10 @@ GEMINI_ENDPOINT = (
 # The ONLY categories allowed. Gemini may pick one or more of these (or none).
 ALLOWED_CATEGORIES = {"Celebrity", "Lifestyle", "Creative", "Model", "Fitness"}
 CATEGORY_DEFINITIONS = """- Celebrity: anyone with a TV show or movie, an actor, or a singer
-- Lifestyle: anyone with mixed beauty, fashion, and/or food content
+- Lifestyle: anyone sharing their life, work, or scene — beauty, fashion, food,
+  travel, nightlife/events, founders and entrepreneurs, ambassadors, or a general
+  personal brand. This is the default for a real person who doesn't clearly fit
+  another category.
 - Creative: any photographer, videographer, painter, etc.
 - Model: someone who works as a model
 - Fitness: anyone with exercise or healthy-living content"""
@@ -107,8 +110,9 @@ Return ONLY a JSON object with these exact keys:
 - "followers": follower count as an integer (0 if unknown)
 - "bio": the profile bio text, cleaned to a single line (string, "" if unknown)
 - "category": an array of EVERY label below that applies (a profile can match
-  several). Return [] if none clearly fit. Use the label text exactly as written
-  below, nothing else:
+  several). If the profile is a real person but no other label clearly fits,
+  return ["Lifestyle"]. Return [] only for brands, organizations, or profiles
+  with no usable signal. Use the label text exactly as written below, nothing else:
 {categories}
 
 Use the scraped data as the source of truth. Do not invent numbers.
