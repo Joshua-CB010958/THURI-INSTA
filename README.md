@@ -27,6 +27,12 @@ You need **Python 3** installed ([python.org/downloads](https://www.python.org/d
 the `.ps1` versions. **Python is not required up front**: `setup.ps1` installs it
 for you (via `winget`, falling back to the official installer) if it isn't there.
 
+> **Double-click the `.bat` files, never the `.ps1` files.** Windows opens a
+> double-clicked `.ps1` in Notepad instead of running it — that's a deliberate
+> security default, not something being broken. The `.bat` files are wrappers
+> that run the `.ps1` properly. (Right-click → **Run with PowerShell** also
+> works.)
+
 **If you already have the project folder** — double-click
 **`Instagram Scraper.bat`**. That's it: it installs Python if needed, installs
 the dependencies and opens the app. It downloads no project files.
@@ -94,3 +100,4 @@ If no login is found it falls back to anonymous mode (works, but rate-limited).
 - `setup.ps1` / `start.ps1` — install & run (Windows)
 - `Instagram Scraper.command` — double-click launcher (macOS)
 - `Instagram Scraper.bat` — double-click launcher (Windows)
+- `bootstrap.ps1` / `bootstrap.bat` — download-and-run, for a machine with nothing installed
