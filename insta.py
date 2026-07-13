@@ -80,12 +80,12 @@ GEMINI_ENDPOINT = (
 )
 
 # The ONLY categories allowed. Gemini may pick one or more of these (or none).
-ALLOWED_CATEGORIES = {"CELEBRITY", "LIFESTYLE", "CREATIVE", "MODEL", "FITNESS"}
-CATEGORY_DEFINITIONS = """- CELEBRITY: anyone with a TV show or movie, an actor, or a singer
-- LIFESTYLE: anyone with mixed beauty, fashion, and/or food content
-- CREATIVE: any photographer, videographer, painter, etc.
-- MODEL: someone who works as a model
-- FITNESS: anyone with exercise or healthy-living content"""
+ALLOWED_CATEGORIES = {"Celebrity", "Lifestyle", "Creative", "Model", "Fitness"}
+CATEGORY_DEFINITIONS = """- Celebrity: anyone with a TV show or movie, an actor, or a singer
+- Lifestyle: anyone with mixed beauty, fashion, and/or food content
+- Creative: any photographer, videographer, painter, etc.
+- Model: someone who works as a model
+- Fitness: anyone with exercise or healthy-living content"""
 
 EXTRACT_PROMPT = """You are cleaning up scraped public data about an Instagram profile.
 
@@ -103,7 +103,7 @@ Return ONLY a JSON object with these exact keys:
   decorative fonts (e.g. 𝕡𝕒𝕦𝕝𝕒, ＡＮＤＲＡ) to normal text and remove emojis. If the
   value is not an actual person's name (a description, tagline, slogan, or a
   single stray letter), return "".
-- "gender": best guess "Male", "Female", or "" if unclear (from name/bio/photo)
+- "gender": best guess "MALE", "FEMALE", or "Not Specified" if unclear (from name/bio/photo)
 - "followers": follower count as an integer (0 if unknown)
 - "bio": the profile bio text, cleaned to a single line (string, "" if unknown)
 - "category": an array of EVERY label below that applies (a profile can match
