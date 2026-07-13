@@ -22,6 +22,35 @@ You need **Python 3** installed ([python.org/downloads](https://www.python.org/d
 ./start.sh      # starts the app and opens the browser
 ```
 
+### Option C — Windows
+`setup.sh` / `start.sh` are bash scripts and won't run in cmd or PowerShell — use
+the `.ps1` versions. **Python is not required up front**: `setup.ps1` installs it
+for you (via `winget`, falling back to the official installer) if it isn't there.
+
+**If you already have the project folder** — double-click
+**`Instagram Scraper.bat`**. That's it: it installs Python if needed, installs
+the dependencies and opens the app. It downloads no project files.
+
+**From a bare machine, with no copy of the project.** Open **PowerShell**
+(Start → type "PowerShell" → Enter) and paste:
+
+```powershell
+iwr -useb https://raw.githubusercontent.com/Joshua-CB010958/THURI-INSTA/main/bootstrap.ps1 | iex
+```
+
+That fetches the project into `%USERPROFILE%\THURI-INSTA`, installs Python if
+missing, installs the dependencies, and starts the app in your browser.
+
+**Step by step, if you'd rather see what's happening.** From inside the folder:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\setup.ps1   # one-time
+powershell -ExecutionPolicy Bypass -File .\start.ps1   # starts the app
+```
+
+Downloading `setup.sh` (or `setup.ps1`) on its own does nothing — it needs
+`app.py`, `insta.py`, `requirements.txt` and `static/` sitting next to it.
+
 ## Configuration (`.env`)
 `setup.sh` creates `.env` from `.env.example`. Fill in:
 
@@ -43,9 +72,11 @@ logged into (Chrome/Safari/Firefox/Brave/Edge/Chromium/Opera) to avoid rate
 limits — **nothing to copy or paste**. Just be logged into instagram.com in a
 browser. The header shows `🔓 authenticated` when it found the login.
 
-- **Safari**: give your terminal **Full Disk Access** (System Settings →
+- **Safari** (macOS): give your terminal **Full Disk Access** (System Settings →
   Privacy & Security → Full Disk Access) so it can read Safari's cookies.
-- **Chrome/Brave**: approve the one-time keychain prompt.
+- **Chrome/Brave** (macOS): approve the one-time keychain prompt.
+- **Windows**: nothing to approve — Chrome/Edge/Firefox/Brave cookies are read
+  directly. (Safari doesn't exist there, so ignore the Safari note.)
 
 If no login is found it falls back to anonymous mode (works, but rate-limited).
 
@@ -59,5 +90,7 @@ If no login is found it falls back to anonymous mode (works, but rate-limited).
 - `app.py` — Flask web server (UI + API)
 - `insta.py` — scraping, Gemini, webhook, session cookie logic
 - `static/index.html` — the web UI
-- `setup.sh` / `start.sh` — install & run
+- `setup.sh` / `start.sh` — install & run (macOS / Linux)
+- `setup.ps1` / `start.ps1` — install & run (Windows)
 - `Instagram Scraper.command` — double-click launcher (macOS)
+- `Instagram Scraper.bat` — double-click launcher (Windows)
