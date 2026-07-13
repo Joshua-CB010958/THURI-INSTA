@@ -1,9 +1,9 @@
 # Windows bootstrap. Sets the project up (installing Python if needed) and starts
 # the app. Nothing needs to be installed first - no Python, no git.
 #
-# If you ALREADY have the project folder: open it in PowerShell and run
-#     .\bootstrap.ps1
-# and it uses the files that are already there - it downloads nothing.
+# If you ALREADY have the project folder: double-click Instagram Scraper.bat (or
+# run .\bootstrap.ps1). It updates the code to the newest version first, then
+# starts the app. Your .env (login/secrets) is never overwritten.
 #
 # From a bare machine, with no copy of the project at all:
 #     iwr -useb https://raw.githubusercontent.com/Joshua-CB010958/THURI-INSTA/main/bootstrap.ps1 | iex
@@ -29,7 +29,31 @@ foreach ($dir in @($base, (Get-Location).Path, (Join-Path $env:USERPROFILE "THUR
 }
 
 if ($project) {
-    Write-Host "==> Using the copy already here: $project"
+    Write-Host "==> Found an existing copy: $project"
+    # Update it to the newest pushes. Your .env (login/secrets) is never touched
+    # - it isn't part of the repo. If updating fails (e.g. offline), the existing
+    # copy is used as-is.
+    try {
+        if ((Test-Path (Join-Path $project ".git")) -and (Get-Command git -ErrorAction SilentlyContinue)) {
+            Write-Host "==> Pulling the latest version (git)"
+            git -C $project pull --ff-only
+        } else {
+            Write-Host "==> Downloading the latest version"
+            $tmp = Join-Path $env:TEMP "thuri-insta-update"
+            $zip = Join-Path $env:TEMP "thuri-insta-update.zip"
+            if (Test-Path $tmp) { Remove-Item $tmp -Recurse -Force }
+            Invoke-WebRequest -Uri "$repo/archive/refs/heads/main.zip" -OutFile $zip -UseBasicParsing
+            Expand-Archive -Path $zip -DestinationPath $tmp -Force
+            $inner = Get-ChildItem $tmp -Directory | Select-Object -First 1
+            # Overwrite the project's code with the fresh copy. Untracked files
+            # you created (like .env) aren't in the ZIP, so they stay put.
+            Copy-Item -Path (Join-Path $inner.FullName "*") -Destination $project -Recurse -Force
+            Remove-Item $zip, $tmp -Recurse -Force -ErrorAction SilentlyContinue
+        }
+        Write-Host "==> Up to date."
+    } catch {
+        Write-Host "==> Could not update (using the copy you have): $($_.Exception.Message)"
+    }
 } else {
     # 2. No copy anywhere - fetch one into $base. The folder may already hold
     #    this bootstrap file, so fetch to a temp folder and move the contents in,
