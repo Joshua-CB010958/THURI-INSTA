@@ -170,6 +170,7 @@ def _parse_count(text: str) -> int:
 
 _ig_session = None
 _ig_auth_note = "not initialized"
+_ig_browser_used = ""
 
 
 def _load_sessionid() -> str:
@@ -177,30 +178,42 @@ def _load_sessionid() -> str:
 
     Order: explicit IG_SESSIONID -> the browser you're logged into (via
     browser_cookie3). Returns "" if none found.
+
+    Note on Windows: Chrome and Edge (v127+, mid-2024 onward) encrypt cookies
+    with "app-bound encryption", which only the browser itself can decrypt, so
+    no outside tool can read them. Firefox does NOT do this, so it's tried first
+    and is the reliable choice for automatic login on Windows.
     """
+    global _ig_browser_used
     if IG_SESSIONID:
+        _ig_browser_used = "manual override (IG_SESSIONID)"
         return IG_SESSIONID
     try:
         import browser_cookie3 as bc
     except ImportError:
         return ""
 
+    # Firefox first: its cookies are always readable, unlike Chrome/Edge on
+    # recent Windows. The rest are still tried in case they happen to work.
     all_loaders = {
-        "chrome": bc.chrome, "safari": bc.safari, "firefox": bc.firefox,
-        "edge": bc.edge, "brave": bc.brave, "chromium": bc.chromium,
-        "opera": bc.opera,
+        "firefox": bc.firefox, "chrome": bc.chrome, "edge": bc.edge,
+        "brave": bc.brave, "chromium": bc.chromium, "opera": bc.opera,
+        "safari": bc.safari,
     }
     if IG_BROWSER:
         loaders = {IG_BROWSER: all_loaders[IG_BROWSER]} if IG_BROWSER in all_loaders else {}
     else:
         loaders = all_loaders
 
-    for fn in loaders.values():
+    for name, fn in loaders.items():
         try:
             for c in fn(domain_name="instagram.com"):
                 if c.name == "sessionid" and c.value:
+                    _ig_browser_used = name
                     return c.value
         except Exception:
+            # Browser not installed, locked, or (Chrome/Edge on Windows)
+            # encrypted so we can't read it. Move on to the next.
             continue
     return ""
 
@@ -217,9 +230,14 @@ def get_session() -> requests.Session:
         sid = _load_sessionid()
         if sid:
             s.cookies.set("sessionid", sid, domain=".instagram.com")
-            _ig_auth_note = "authenticated (using logged-in session cookie)"
+            where = f" from {_ig_browser_used}" if _ig_browser_used else ""
+            _ig_auth_note = f"authenticated (using logged-in session{where})"
         else:
-            _ig_auth_note = "anonymous (no Instagram login found in a browser)"
+            _ig_auth_note = (
+                "anonymous — no Instagram login found. Log in to Instagram in "
+                "Firefox, then reload this page. (Windows blocks reading the "
+                "login from Chrome/Edge, so Firefox is needed.)"
+            )
     else:
         _ig_auth_note = "anonymous (session cookie disabled)"
     _ig_session = s

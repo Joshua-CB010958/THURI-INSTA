@@ -12,16 +12,16 @@ if (-not (Test-Path ".venv")) {
 if (-not $env:PORT) { $env:PORT = "5001" }
 $URL = "http://127.0.0.1:$($env:PORT)"
 
-# Open the browser shortly after the server starts. Prefer Chrome; fall back
-# to the system default browser if Chrome isn't installed.
+# Open the browser shortly after the server starts. Prefer Firefox so the app
+# and the Instagram login live in the same browser (the login is read from
+# Firefox). Fall back to the system default browser if Firefox isn't installed.
 Start-Job -ScriptBlock {
     Start-Sleep -Seconds 2
-    $chrome = @(
-        "$env:ProgramFiles\Google\Chrome\Application\chrome.exe",
-        "${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe",
-        "$env:LocalAppData\Google\Chrome\Application\chrome.exe"
+    $firefox = @(
+        "$env:ProgramFiles\Mozilla Firefox\firefox.exe",
+        "${env:ProgramFiles(x86)}\Mozilla Firefox\firefox.exe"
     ) | Where-Object { Test-Path $_ } | Select-Object -First 1
-    if ($chrome) { Start-Process $chrome $using:URL }
+    if ($firefox) { Start-Process $firefox $using:URL }
     else { Start-Process $using:URL }
 } | Out-Null
 
