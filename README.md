@@ -101,3 +101,5 @@ If no login is found it falls back to anonymous mode (works, but rate-limited).
 - `Instagram Scraper.command` — double-click launcher (macOS)
 - `Instagram Scraper.bat` — double-click launcher (Windows)
 - `bootstrap.ps1` / `bootstrap.bat` — download-and-run, for a machine with nothing installed
+
+Auatomation (Time Saved) = 4 - 5 Hours
