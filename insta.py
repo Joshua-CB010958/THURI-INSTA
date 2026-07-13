@@ -108,7 +108,7 @@ Return ONLY a JSON object with these exact keys:
 - "bio": the profile bio text, cleaned to a single line (string, "" if unknown)
 - "category": an array of EVERY label below that applies (a profile can match
   several). Return [] if none clearly fit. Use the label text exactly as written
-  (uppercase), nothing else:
+  below, nothing else:
 {categories}
 
 Use the scraped data as the source of truth. Do not invent numbers.
@@ -447,8 +447,9 @@ def clean_categories(raw_cats) -> list:
     """Normalize Gemini's category output to the allowed uppercase labels."""
     if isinstance(raw_cats, str):
         raw_cats = [raw_cats]
-    cats = [c.strip().upper() for c in (raw_cats or [])]
-    cats = [c for c in cats if c in ALLOWED_CATEGORIES]
+    canonical = {c.upper(): c for c in ALLOWED_CATEGORIES}
+    cats = [canonical.get(c.strip().upper()) for c in (raw_cats or [])]
+    cats = [c for c in cats if c]
     return list(dict.fromkeys(cats))  # dedupe, keep order
 
 
