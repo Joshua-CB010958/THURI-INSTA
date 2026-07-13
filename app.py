@@ -53,6 +53,20 @@ def scrape():
         return jsonify({"ok": False, "handle": handle, "error": f"{type(e).__name__}: {e}"}), 200
 
 
+@app.route("/api/resend", methods=["POST"])
+def resend():
+    """Re-post a previously scraped row to the webhook (no re-scrape)."""
+    data = request.get_json(silent=True) or {}
+    row = [
+        data.get("gender", ""), data.get("category", ""), data.get("name", ""),
+        data.get("link", ""), data.get("followers", ""), data.get("bio", ""),
+    ]
+    if not data.get("link"):
+        return jsonify({"ok": False, "error": "missing row data"}), 400
+    sent = insta.send_row(row)
+    return jsonify({"ok": sent})
+
+
 @app.route("/api/img")
 def img_proxy():
     """Proxy an Instagram CDN image so it isn't blocked by hotlink protection."""

@@ -493,15 +493,23 @@ def process_handle(handle: str) -> dict:
 
 
 def send_row(row) -> bool:
-    """POST one row to the webhook as JSON keyed by column name. Returns success."""
+    """POST one row to the webhook as JSON keyed by column name. Returns success.
+
+    Retries a couple of times with a short backoff — the webhook host is behind
+    a tunnel that occasionally drops out for a moment (e.g. Cloudflare 530s).
+    """
     payload = dict(zip(HEADERS, row))
-    try:
-        r = requests.post(WEBHOOK_URL, json=payload, timeout=30)
-        r.raise_for_status()
-        return True
-    except requests.RequestException as e:
-        print(f"        ! webhook POST failed: {e}")
-        return False
+    delays = [0, 3, 8]  # seconds to wait before each attempt
+    for attempt, delay in enumerate(delays, 1):
+        if delay:
+            time.sleep(delay)
+        try:
+            r = requests.post(WEBHOOK_URL, json=payload, timeout=30)
+            r.raise_for_status()
+            return True
+        except requests.RequestException as e:
+            print(f"        ! webhook POST failed (attempt {attempt}/{len(delays)}): {e}")
+    return False
 
 
 def main():
