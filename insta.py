@@ -172,19 +172,33 @@ _ig_session = None
 _ig_auth_note = "not initialized"
 _ig_browser_used = ""
 _ig_diag = []  # human-readable notes from the last login-detection attempt
+_ig_last_diag_printed = ""  # to avoid re-printing the same diagnostics
 
 
 def _firefox_profile_dirs():
-    """Every Firefox profile directory on this machine, across OSes."""
+    """Every Firefox profile directory on this machine, across OSes.
+
+    Covers a normal Firefox install and the Microsoft Store version, which
+    sandboxes its profile under %LOCALAPPDATA%\\Packages\\Mozilla.Firefox_*.
+    """
     roots = []
     home = Path.home()
     appdata = os.environ.get("APPDATA", "")
-    if appdata:                                        # Windows
+    localappdata = os.environ.get("LOCALAPPDATA", "")
+    if appdata:                                        # Windows, normal install
         roots.append(Path(appdata) / "Mozilla" / "Firefox" / "Profiles")
+    if localappdata:                                   # Windows, Microsoft Store
+        store = Path(localappdata) / "Packages"
+        try:
+            for pkg in store.glob("Mozilla.Firefox_*"):
+                roots.append(pkg / "LocalCache" / "Roaming" / "Mozilla" / "Firefox" / "Profiles")
+        except Exception:
+            pass
     roots += [
         home / "Library" / "Application Support" / "Firefox" / "Profiles",  # macOS
         home / ".mozilla" / "firefox",                                      # Linux
         home / "snap" / "firefox" / "common" / ".mozilla" / "firefox",      # Linux snap
+        home / ".var" / "app" / "org.mozilla.firefox" / ".mozilla" / "firefox",  # Flatpak
     ]
     dirs = []
     for root in roots:
@@ -304,10 +318,16 @@ def get_session() -> requests.Session:
                 "this page. (Windows blocks reading the login from Chrome/Edge, "
                 "so Firefox is needed.)"
             )
-            # Print what we found so the terminal shows why detection failed.
-            print("==> Instagram login detection:")
-            for line in _ig_diag or ["(no diagnostics captured)"]:
-                print(f"    - {line}")
+            # Print what we found so the terminal shows why detection failed,
+            # but only when it changes - status is polled often and we don't
+            # want to spam the console every second.
+            global _ig_last_diag_printed
+            snapshot = "\n".join(_ig_diag)
+            if snapshot != _ig_last_diag_printed:
+                _ig_last_diag_printed = snapshot
+                print("==> Instagram login detection:")
+                for line in _ig_diag or ["(no diagnostics captured)"]:
+                    print(f"    - {line}")
     else:
         _ig_auth_note = "anonymous (session cookie disabled)"
     _ig_session = s
